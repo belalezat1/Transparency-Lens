@@ -8,6 +8,7 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:3001',
       '/ingest': 'http://localhost:3001',
+      '/demo': 'http://localhost:3001',
     },
   },
 })

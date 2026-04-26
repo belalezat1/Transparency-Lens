@@ -99,6 +99,31 @@ function simulatedRoute(destination) {
   })
 }
 
+function curvedPoints(p1, p2, nPoints = 24) {
+  const [lat1, lng1] = p1
+  const [lat2, lng2] = p2
+  const dist = Math.sqrt((lat2 - lat1) ** 2 + (lng2 - lng1) ** 2)
+  const curvature = dist * 0.18
+
+  const dx = lat2 - lat1
+  const dy = lng2 - lng1
+  const len = Math.sqrt(dx * dx + dy * dy) || 1
+
+  // Control point offset perpendicular to the segment — arcs upward
+  const ctrlLat = (lat1 + lat2) / 2 + (-dy / len) * curvature
+  const ctrlLng = (lng1 + lng2) / 2 + (dx / len) * curvature
+
+  const pts = []
+  for (let i = 0; i <= nPoints; i++) {
+    const t = i / nPoints
+    pts.push([
+      (1 - t) * (1 - t) * lat1 + 2 * (1 - t) * t * ctrlLat + t * t * lat2,
+      (1 - t) * (1 - t) * lng1 + 2 * (1 - t) * t * ctrlLng + t * t * lng2,
+    ])
+  }
+  return pts
+}
+
 function connectionSegments(origin, destination) {
   const [originLat, originLng] = origin
   const [destLat, destLng] = destination
@@ -224,37 +249,31 @@ export default function MapComponent({ trackers }) {
       const style = CATEGORY_STYLE[tracker.category] || { color: '#94a3b8', label: tracker.category || 'Unknown' }
       const isLatest = index === 0
       const destination = [tracker.location.lat, tracker.location.lng]
-      const route = simulatedRoute(destination)
+      const pts = curvedPoints(ORIGIN_LL, destination)
 
-      route.slice(0, -1).forEach((hop, hopIndex) => {
-        const nextHop = route[hopIndex + 1]
-        connectionSegments(hop.latLng, nextHop.latLng).forEach((segment) => {
-          L.polyline(segment, {
-            pane: 'ping-connections',
-            color: style.color,
-            weight: isLatest ? 2.2 : 1.2,
-            opacity: isLatest ? 0.74 : 0.28,
-            dashArray: isLatest ? '4 7' : '2 9',
-            lineCap: 'round',
-            interactive: false,
-          }).addTo(connectionLayer)
-        })
-      })
-
+      // Glow layer (latest only)
       if (isLatest) {
-        route.slice(1, -1).forEach((hop, hopIndex) => {
-          L.circleMarker(hop.latLng, {
-            radius: 3.2,
-            fillColor: '#D3C3B9',
-            color: '#10252C',
-            weight: 1,
-            fillOpacity: 0.86,
-            opacity: 1,
-          })
-            .bindPopup(popupHtml(`Hop ${hopIndex + 1}`, hop.name))
-            .addTo(connectionLayer)
-        })
+        L.polyline(pts, {
+          pane: 'ping-connections',
+          color: style.color,
+          weight: 7,
+          opacity: 0.15,
+          lineCap: 'round',
+          lineJoin: 'round',
+          interactive: false,
+        }).addTo(connectionLayer)
       }
+
+      // Main solid arc
+      L.polyline(pts, {
+        pane: 'ping-connections',
+        color: style.color,
+        weight: isLatest ? 2 : 1,
+        opacity: isLatest ? 0.85 : 0.2,
+        lineCap: 'round',
+        lineJoin: 'round',
+        interactive: false,
+      }).addTo(connectionLayer)
 
       L.circleMarker(destination, {
         radius: isLatest ? 7 : 5,

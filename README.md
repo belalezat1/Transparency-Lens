@@ -1,0 +1,238 @@
+# The Transparency Lens
+
+> **Real-Time Privacy Auditor** — An educational AI-powered dashboard that intercepts, classifies, and visualizes the trackers embedded in everyday web browsing — live, as they happen.
+
+**KeanUHackThis 2026 · Dream in AI · Kean University, Union NJ**
+
+Built by **Belal Ezat · Yassin Abdalla · Ameer Hassan**
+
+---
+
+## What It Does
+
+The Transparency Lens turns invisible data collection into a visible, real-time experience. When a device browses the web through our network setup, every hidden tracker — advertising networks, fingerprinting scripts, analytics beacons, social trackers — is intercepted and displayed on a live dashboard before the user even finishes loading the page.
+
+Each tracker is:
+- **Classified** into a category (Advertising, Analytics, Fingerprinting, Social)
+- **Explained** in plain English by Gemma 4 AI ("This tracker is part of the Rubicon Project; it collects browser metadata to facilitate real-time bidding for ad placements.")
+- **Mapped** with a curved arc from Union, NJ to the tracker's server location worldwide
+- **Scored** against a live Privacy Health meter that degrades as exposure grows
+- **Valued** with an estimated CPM dollar amount showing what your session data is worth to advertisers
+
+---
+
+## The Problem
+
+The average webpage loads **10–20 third-party trackers** that users never see, never consented to, and have no way to understand. These trackers build detailed behavioral profiles — your interests, demographics, location history, and browsing patterns — and sell that data in real-time auctions lasting milliseconds. Most people have no idea this is happening every time they open a browser.
+
+## The Solution
+
+A transparent proxy sits between the user's device and the internet. It silently intercepts outbound connections, identifies tracker hostnames, and streams that data to this dashboard in real time via WebSocket. No app to install. No configuration needed on the browsing device. Just connect to the Wi-Fi and browse — the dashboard reveals everything.
+
+---
+
+## Technical Architecture
+
+```
+Browsing Device
+  │  (connects to "Transparency Wi-Fi" hotspot)
+  ▼
+Raspberry Pi 4  ──── acts as wireless access point only
+  │  (Ethernet → Mac USB dongle)
+  ▼
+MacBook  ─── runs mitmproxy + Express server + React dashboard
+  │  (mitmproxy intercepts HTTP/HTTPS on port 8080)
+  ▼
+Internet
+```
+
+### Interception Method: SNI / HTTPS CONNECT Capture
+
+We use **mitmproxy in regular proxy mode**. When a device routes through our proxy, every HTTPS connection begins with a `CONNECT` request that reveals the target hostname — before any encryption starts. Our `narrator.py` addon captures these hostnames from the `http_connect` hook without decrypting traffic and without requiring any certificate installation on the browsing device.
+
+### Data Pipeline
+
+```
+mitmproxy intercepts CONNECT request
+         │
+         ▼ narrator.py
+    detect_category()     ← regex patterns for 60+ tracker domains
+    get_geoip()           ← ip-api.com resolves server location
+    get_summary()         ← Gemma 4 via Gemini API generates plain-English explanation
+         │
+         ▼ POST /ingest
+    Express server (Node.js)
+    ├── save → MongoDB Atlas (operational store)
+    ├── insert → Snowflake (cross-session analytics warehouse)
+    └── emit → Socket.io → Browser dashboard (real-time)
+```
+
+---
+
+## Features
+
+### Live Tracker Feed
+Slide-in cards appear for every intercepted tracker, showing the hostname, AI-generated educational summary, category badge, timestamp, and server city. Full text — no truncation.
+
+### Interactive World Map
+Leaflet.js dark map with smooth bezier arcs drawn from Union, NJ to each tracker's server location. The most recent connection is highlighted with a color-coded glow. Older connections fade to show session history.
+
+### Privacy Health Score
+Starts at 100. Degrades with every tracker intercepted:
+- Fingerprinting: −8 pts
+- Advertising: −4 pts
+- Social: −3 pts
+- Analytics: −2 pts
+
+Transitions through Good → At Risk → Critical with animated color changes.
+
+### Session Data Value Estimator
+Spring-animated dollar counter showing the estimated CPM value of the current browsing session based on advertising industry rate cards per tracker category.
+
+### Tracker Category Breakdown
+Recharts donut chart with live updates showing the percentage split between Advertising, Analytics, Fingerprinting, and Social trackers.
+
+### Inferred Profile (Gemma 4)
+Every 5 minutes, the session's intercepted tracker list is sent to Gemma 4 via the Gemini API. It returns a 2-sentence behavioral profile of what a data broker could infer about the user — educational, objective, and startling.
+
+### Global Intelligence (Snowflake + Cortex AI)
+Cross-session analytics powered by Snowflake: total events across all sessions, unique host counts per category, and a one-sentence insight generated by Snowflake Cortex AI's `COMPLETE` function running directly in SQL.
+
+### Session Reset
+One-click wipe of MongoDB, Socket.io broadcast to all connected dashboards, and full UI reset to baseline — useful for back-to-back demo sessions with judges.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 19 (Vite), Tailwind CSS v3, Framer Motion |
+| Map | Leaflet.js + CartoDB Dark tiles |
+| Charts | Recharts |
+| Real-time | Socket.io |
+| Backend | Node.js, Express |
+| Database | MongoDB Atlas |
+| Analytics | Snowflake + Cortex AI |
+| AI | Gemma 4 via Google Gemini API |
+| Interception | mitmproxy (Python) |
+| Network | Raspberry Pi 4 (WAP), Mac proxy gateway |
+
+---
+
+## MLH Prize Tracks
+
+### Best Use of Gemma 4 (Google Gemini API)
+Gemma 4 powers two features:
+1. **Educational Summaries** — every intercepted tracker hostname is sent to Gemma 4, which returns a plain-English explanation of what that tracker does and how it contributes to a user's digital profile
+2. **Inferred Profile** — every 5 minutes, Gemma 4 analyzes the full session tracker list and generates a behavioral profile of the user as a data broker would see them
+
+### Best Use of MongoDB Atlas
+MongoDB Atlas is the operational data store for all tracker events. It powers:
+- The live tracker feed (real-time queries)
+- Session statistics and category aggregation
+- The 30-minute session window loaded on dashboard open
+- Persistent storage across the demo
+
+### Best Use of Snowflake API
+Snowflake serves as the cross-session analytics warehouse:
+- Every tracker event is written to Snowflake asynchronously (fire-and-forget, no latency impact)
+- `GET /api/global-analytics` queries Snowflake for category totals and unique host counts across all sessions
+- `GET /api/cortex-insight` runs `SNOWFLAKE.CORTEX.COMPLETE('mistral-7b', ...)` directly in SQL to generate an AI insight about modern surveillance patterns from the accumulated data
+
+---
+
+## Project Structure
+
+```
+keanhacks/
+  server/
+    server.js          ← Express + Socket.io + MongoDB + Snowflake + Gemini API
+    package.json
+    .env.example
+  client/
+    src/
+      App.jsx                    ← State management, socket connection, layout
+      components/
+        MapComponent.jsx         ← Leaflet map + bezier arc rendering
+        EducationalFeed.jsx      ← Live tracker card feed
+        CategoryPieChart.jsx     ← Recharts donut chart
+        PrivacyScorecard.jsx     ← Animated health meter
+        DataValueEstimator.jsx   ← Spring-animated dollar counter
+        ShadowProfileSummary.jsx ← Gemma 4 inferred profile with typewriter effect
+        GlobalAnalytics.jsx      ← Snowflake cross-session stats + Cortex insight
+        HowItWorks.jsx           ← Educational explainer footer
+  narrator.py          ← mitmproxy addon: intercepts, classifies, posts to backend
+  README.md
+```
+
+---
+
+## Running the Project
+
+### Prerequisites
+- Node.js 20+
+- Python 3.11+
+- mitmproxy (`brew install mitmproxy`)
+- MongoDB Atlas account
+- Google AI Studio API key (Gemini / Gemma 4)
+- Snowflake account (optional — app runs without it)
+- Mapbox token (optional — using Leaflet/CartoDB instead)
+
+### Environment Variables
+
+**`server/.env`**
+```
+PORT=3001
+MONGO_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/transparency_lens
+GEMINI_API_KEY=your_gemini_api_key
+GEMMA_MODEL=gemma-3-4b-it
+SNOWFLAKE_ACCOUNT=orgname-accountname
+SNOWFLAKE_USER=username
+SNOWFLAKE_PASSWORD=password
+SNOWFLAKE_DATABASE=TRANSPARENCY_LENS
+SNOWFLAKE_SCHEMA=PUBLIC
+SNOWFLAKE_WAREHOUSE=COMPUTE_WH
+```
+
+### Snowflake Table (run once)
+```sql
+CREATE DATABASE IF NOT EXISTS TRANSPARENCY_LENS;
+CREATE TABLE IF NOT EXISTS TRANSPARENCY_LENS.PUBLIC.TRACKER_EVENTS (
+  ID VARCHAR, HOSTNAME VARCHAR, IP VARCHAR, CITY VARCHAR,
+  LAT FLOAT, LNG FLOAT, CATEGORY VARCHAR, EDUCATIONAL_SUMMARY VARCHAR,
+  TS TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+);
+```
+
+### Start
+
+```bash
+# Terminal 1 — Backend
+cd server && node --watch server.js
+
+# Terminal 2 — Frontend
+cd client && npm run dev
+
+# Terminal 3 — mitmproxy (proxy mode)
+mitmdump --mode regular --listen-port 8080 -s narrator.py
+```
+
+### Demo Device Setup
+On the device you want to monitor, set the HTTP and HTTPS proxy to:
+- **Server:** `<your Mac's IP on the network>`
+- **Port:** `8080`
+
+Then browse any website. Tracker events will appear on the dashboard at `http://localhost:5173` within seconds.
+
+---
+
+## Educational Impact
+
+The Transparency Lens doesn't just show trackers — it explains them. Every card in the feed contains a Gemma 4-generated sentence that a non-technical user can understand. The goal is not to frighten, but to inform: to show that the "free" internet has a price, that price is your behavioral data, and that price has a specific dollar value that updates in real time on your screen.
+
+Privacy literacy is a prerequisite for digital citizenship. The Transparency Lens makes it visible.
+
+---
+
+*Built in 24 hours at KeanUHackThis 2026 — Dream in AI · Kean University, Union NJ*

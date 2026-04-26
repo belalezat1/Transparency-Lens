@@ -127,7 +127,7 @@ const DEMO_TRACKERS = [
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.post('/ingest', async (req, res) => {
   const { hostname, ip, location, educational_summary, category } = req.body
-  if (!hostname || !ip || !location?.lat || !location?.lng || !educational_summary || !category) {
+  if (!hostname || !ip || !location || location.lat == null || location.lng == null || !educational_summary || !category) {
     return res.status(400).json({ error: 'Missing required fields' })
   }
   try {
@@ -136,6 +136,16 @@ app.post('/ingest', async (req, res) => {
     io.emit('new_tracker', event.toObject())
     sfInsertAsync(event.toObject())
     res.status(201).json(event)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+app.delete('/api/reset', async (_req, res) => {
+  try {
+    await TrackerEvent.deleteMany({})
+    io.emit('session_reset')
+    res.json({ ok: true })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

@@ -5,9 +5,6 @@ Run: mitmdump --mode regular --listen-port 8080 -s narrator.py
 Demo device proxy config:
   HTTP Proxy:  10.139.24.64  port 8080
   HTTPS Proxy: 10.139.24.64  port 8080
-
-No certificate installation needed — hostnames are captured from the
-CONNECT request before the TLS handshake starts.
 """
 
 import re
@@ -17,32 +14,60 @@ from concurrent.futures import ThreadPoolExecutor
 from mitmproxy import http
 
 BACKEND_URL = "http://localhost:3001"
-_pool = ThreadPoolExecutor(max_workers=4)
+_pool = ThreadPoolExecutor(max_workers=6)
 
 CATEGORY_PATTERNS = {
     "Advertising": re.compile(
         r"(doubleclick|googlesyndication|adnxs|rubiconproject|openx|pubmatic|"
         r"criteo|moatads|taboola|outbrain|adsystem|adtech|adzerk|adsrvr|adform|"
         r"advertising\.com|ads\.twitter|ads\.linkedin|ads\.yahoo|tribalfusion|"
-        r"casalemedia|appnexus|mediaplex|smartadserver|sizmek)",
+        r"casalemedia|appnexus|mediaplex|smartadserver|sizmek|"
+        r"amazon-adsystem|adsafeprotected|sharethrough|bidswitch|"
+        r"indexexchange|thetradedesk|mathtag|mediamath|krxd|"
+        r"everesttech|demdex|bluekai|lotame|mopub|yieldmo|"
+        r"undertone|conversantmedia|contextweb|lijit|sovrn|"
+        r"turn\.com|w55c\.net|adadvisor|platform161|semasio|"
+        r"yieldify|justpremium|ipredictive|eyereturn|"
+        r"2mdn\.net|chartboost|applovin|unrulymedia|"
+        r"adroll|retargeter|perfectaudience|sitescout|"
+        r"brightroll|dataxu|bidsw\.com|rlcdn\.com|"
+        r"pixel\.advertising|google\.com/pagead|pagead)",
         re.IGNORECASE,
     ),
     "Fingerprinting": re.compile(
         r"(fingerprintjs|iovation|threatmetrix|kaptcha|botd|augur\.io|"
-        r"deviceidentification|clearsale|forter|signifyd|liveramp)",
+        r"deviceidentification|clearsale|forter|signifyd|liveramp|"
+        r"clarity\.ms|inspectlet|sessioncam|luckyorange|"
+        r"mouseflow|fullstory|heap\.io|hotjar|sessionstack|"
+        r"logrocket|smartlook|glassbox|contentsquare|"
+        r"quantum\.metric|decibel\.com|userzoom)",
         re.IGNORECASE,
     ),
     "Social": re.compile(
         r"(connect\.facebook|platform\.twitter|platform\.linkedin|"
         r"api\.pinterest|accounts\.google|oauth|login\.live|"
-        r"staticxx\.facebook|graph\.facebook)",
+        r"staticxx\.facebook|graph\.facebook|pixel\.facebook|"
+        r"facebook\.net|instagram\.com/api|twitter\.com/i/|"
+        r"linkedin\.com/li|snapchat\.com/p|tiktok\.com/api|"
+        r"pinterest\.com/ct)",
         re.IGNORECASE,
     ),
     "Analytics": re.compile(
-        r"(google-analytics|googletagmanager|analytics|hotjar|"
-        r"mixpanel|amplitude|segment\.io|heap\.io|fullstory|"
+        r"(google-analytics|googletagmanager|analytics|"
         r"scorecardresearch|quantserve|chartbeat|parsely|"
-        r"mouseflow|crazyegg|luckyorange|newrelic|datadog|dynatrace)",
+        r"mixpanel|amplitude|segment\.io|"
+        r"newrelic|datadog|dynatrace|nr-data\.net|"
+        r"omtrdc|adobedtm|omniture|"
+        r"permutive|piano\.io|"
+        r"intercom\.io|intercom\.com|"
+        r"branch\.io|appsflyer|adjust\.com|kochava|"
+        r"mparticle|rudderstack|snowplowanalytics|"
+        r"comscore|nielsen|conviva|"
+        r"crazyegg|optimizely|vwo\.com|"
+        r"kissmetrics|woopra|clicky|"
+        r"statcounter|clicktale|"
+        r"bugsnag|sentry\.io|rollbar|"
+        r"tealiumiq|ensighten|qualtrics|surveymonkey)",
         re.IGNORECASE,
     ),
 }
@@ -59,7 +84,6 @@ def detect_category(hostname: str) -> str | None:
 
 
 def get_geoip(host: str) -> dict:
-    # ip-api.com accepts both IPs and hostnames
     try:
         data = requests.get(f"http://ip-api.com/json/{host}", timeout=3).json()
         return {
@@ -76,11 +100,11 @@ def get_summary(hostname: str) -> str:
         r = requests.get(
             f"{BACKEND_URL}/api/educational-summary",
             params={"hostname": hostname},
-            timeout=10,
+            timeout=8,
         )
         return r.json().get("summary", "")
     except Exception:
-        return f"{hostname} collects user behavioral metadata for advertising and analytics pipelines."
+        return f"{hostname} collects behavioral and technical metadata to build advertising and analytics profiles."
 
 
 def process_tracker(hostname: str, server_ip: str | None):
@@ -93,11 +117,8 @@ def process_tracker(hostname: str, server_ip: str | None):
             return
         SEEN.add(hostname)
 
-    # Use hostname for GeoIP if no IP available
     geo_target = server_ip if server_ip else hostname
     location = get_geoip(geo_target)
-    # Don't skip on GeoIP failure — still show in feed and pie chart, map just skips the arc
-
     summary = get_summary(hostname)
 
     payload = {
@@ -110,7 +131,7 @@ def process_tracker(hostname: str, server_ip: str | None):
 
     try:
         requests.post(f"{BACKEND_URL}/ingest", json=payload, timeout=5)
-        print(f"[narrator] ✓  {hostname:40s} {category:15s} {location['city']}")
+        print(f"[narrator] ✓  {hostname:45s} {category:15s} {location['city']}")
     except Exception as e:
         print(f"[narrator] ✗  {hostname}: {e}")
 
@@ -118,24 +139,19 @@ def process_tracker(hostname: str, server_ip: str | None):
 class TrackerInterceptor:
 
     def http_connect(self, flow: http.HTTPFlow) -> None:
-        """
-        HTTPS path — fires when client sends CONNECT, before TLS handshake.
-        We capture the hostname here so no certificate installation is needed.
-        """
         hostname = flow.request.host
-        print(f"[http_connect] {hostname}")
         server_ip = (
             flow.server_conn.peername[0]
             if flow.server_conn and flow.server_conn.peername
             else None
         )
+        if detect_category(hostname):
+            print(f"[connect]  {hostname}")
         _pool.submit(process_tracker, hostname, server_ip)
 
     def request(self, flow: http.HTTPFlow) -> None:
-        """HTTP plain-text path only — HTTPS is handled by http_connect above."""
-        if flow.request.method == "CONNECT":
-            return  # already handled in http_connect
-        hostname = flow.request.pretty_host
+        # Catch CONNECT as fallback and plain HTTP
+        hostname = flow.request.pretty_host if flow.request.method != "CONNECT" else flow.request.host
         if not hostname:
             return
         server_ip = (

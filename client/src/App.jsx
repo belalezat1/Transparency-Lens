@@ -10,12 +10,12 @@ import GlobalAnalytics from './components/GlobalAnalytics'
 import HowItWorks from './components/HowItWorks'
 import Logo from './components/Logo'
 
-const SCORE_PENALTIES   = { Advertising: 3, Fingerprinting: 5, Analytics: 1, Social: 2 }
-const VALUE_MULTIPLIERS = { Advertising: 3, Fingerprinting: 5, Analytics: 1, Social: 2 }
+const SCORE_PENALTIES   = { Advertising: 2, Fingerprinting: 3, Analytics: 1, Social: 1 }
+const VALUE_MULTIPLIERS = { Advertising: 3, Fingerprinting: 5,  Analytics: 1, Social: 2 }
 const BASE_VALUE = 0.001
 
 function calcScore(list) {
-  return Math.max(0, list.reduce((s, t) => s - (SCORE_PENALTIES[t.category] || 1), 100))
+  return Math.max(0, list.reduce((s, t) => s - (SCORE_PENALTIES[t.category] || 2), 100))
 }
 function calcValue(list) {
   return list.reduce((s, t) => s + BASE_VALUE * (VALUE_MULTIPLIERS[t.category] || 1), 0)
@@ -31,19 +31,38 @@ export default function App() {
   )
   const trackersRef = useRef([])
 
-  useEffect(() => { trackersRef.current = trackers }, [trackers])
+  // Recompute score and value whenever trackers list changes
+  useEffect(() => {
+    trackersRef.current = trackers
+    setPrivacyScore(calcScore(trackers))
+    setSessionValue(calcValue(trackers))
+  }, [trackers])
 
   useEffect(() => {
-    // Session-only: start fresh — only show trackers captured since page load
-
-    const socket = io('http://localhost:3001', { transports: ['websocket'] })
-    socket.on('new_tracker', event => {
-      setTrackers(prev => {
-        const updated = [event, ...prev].slice(0, 100)
-        setPrivacyScore(calcScore(updated))
-        setSessionValue(calcValue(updated))
-        return updated
+    // Load last 30 minutes of events so dashboard is never empty on open
+    fetch('/api/trackers')
+      .then(r => r.json())
+      .then(data => {
+        const cutoff = Date.now() - 30 * 60 * 1000
+        const recent = data.filter(t => new Date(t.timestamp).getTime() > cutoff)
+        if (recent.length) {
+          setTrackers(recent)
+          const counts = {}
+          recent.forEach(t => { counts[t.category] = (counts[t.category] || 0) + 1 })
+          setStats({ categoryCounts: counts, total: recent.length })
+        }
       })
+      .catch(() => {})
+
+    const socket = io('http://localhost:3001')
+    socket.on('session_reset', () => {
+      setTrackers([])
+      setStats({ categoryCounts: {}, total: 0 })
+      setShadowProfile('Monitoring active session. Inferred profile will generate after sufficient tracker data has been collected.')
+    })
+
+    socket.on('new_tracker', event => {
+      setTrackers(prev => [event, ...prev].slice(0, 100))
       setStats(prev => ({
         ...prev,
         total: prev.total + 1,
@@ -74,6 +93,10 @@ export default function App() {
     }, 5 * 60 * 1000)
     return () => clearInterval(timer)
   }, [])
+
+  function resetSession() {
+    fetch('/api/reset', { method: 'DELETE' }).catch(() => {})
+  }
 
   return (
     <div className="w-full font-sans" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
@@ -110,6 +133,25 @@ export default function App() {
               </span>
               <span className="text-xs font-medium" style={{ color: '#A79E9C' }}>Live</span>
             </div>
+            <div style={{ width: '1px', height: '28px', background: '#3D4D55' }} />
+            <button
+              onClick={resetSession}
+              style={{
+                background: 'transparent',
+                border: '1px solid #3D4D55',
+                borderRadius: '6px',
+                color: '#A79E9C',
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '5px 12px',
+                cursor: 'pointer',
+                letterSpacing: '0.04em',
+              }}
+              onMouseEnter={e => { e.target.style.borderColor = '#c0614a'; e.target.style.color = '#c0614a' }}
+              onMouseLeave={e => { e.target.style.borderColor = '#3D4D55'; e.target.style.color = '#A79E9C' }}
+            >
+              Reset Session
+            </button>
           </div>
         </div>
       </header>

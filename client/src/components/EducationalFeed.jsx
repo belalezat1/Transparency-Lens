@@ -15,39 +15,73 @@ export default function EducationalFeed({ trackers }) {
         <span className="label tabular-nums">{trackers.length} this session</span>
       </div>
 
-      <div className="flex-1 space-y-1.5 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto p-2" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <AnimatePresence initial={false}>
           {trackers.slice(0, 50).map(t => {
             const badge = BADGE[t.category] || { bg: '#1e1e1e', text: '#A79E9C', border: '#3D4D55' }
             return (
               <motion.div
                 key={String(t._id)}
-                initial={{ opacity: 0, y: -6, height: 0 }}
+                initial={{ opacity: 0, y: -8, height: 0 }}
                 animate={{ opacity: 1, y: 0, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="overflow-hidden"
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+                style={{ overflow: 'hidden', flexShrink: 0 }}
               >
                 <div
-                  className="rounded-lg px-3 py-2 transition-colors"
-                  style={{ background: '#1B1B1B', border: '1px solid #3D4D55' }}
+                  style={{
+                    background: '#1B1B1B',
+                    border: '1px solid #3D4D55',
+                    borderRadius: '10px',
+                    padding: '12px 14px',
+                  }}
                 >
-                  <div className="mb-1 flex items-center justify-between gap-2">
-                    <span className="truncate font-mono text-[11px] font-medium" style={{ color: '#D3C3B9' }}>
+                  {/* Row 1: hostname + badge */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: '7px' }}>
+                    <span style={{
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: '#D3C3B9',
+                      wordBreak: 'break-all',
+                      lineHeight: 1.4,
+                      flex: 1,
+                    }}>
                       {t.hostname}
                     </span>
-                    <span
-                      className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
-                      style={{ background: badge.bg, color: badge.text, border: `1px solid ${badge.border}` }}
-                    >
+                    <span style={{
+                      background: badge.bg,
+                      color: badge.text,
+                      border: `1px solid ${badge.border}`,
+                      borderRadius: '4px',
+                      padding: '2px 7px',
+                      fontSize: '9px',
+                      fontWeight: 700,
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      marginTop: '1px',
+                    }}>
                       {t.category}
                     </span>
                   </div>
-                  <p className="line-clamp-2 text-[11px] leading-relaxed" style={{ color: '#A79E9C' }}>
+
+                  {/* Row 2: educational summary — full text, no clamp */}
+                  <p style={{
+                    fontSize: '12px',
+                    lineHeight: 1.55,
+                    color: '#A79E9C',
+                    marginBottom: '8px',
+                    margin: '0 0 8px 0',
+                  }}>
                     {t.educational_summary}
                   </p>
-                  <p className="mt-1.5 text-[10px] tabular-nums" style={{ color: '#3D4D55' }}>
-                    {new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {t.location?.city || 'Unknown'}
+
+                  {/* Row 3: time + city */}
+                  <p style={{ fontSize: '11px', color: '#3D4D55', margin: 0 }}>
+                    {new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    {t.location?.city && t.location.city !== 'Unknown' ? ` · ${t.location.city}` : ''}
                   </p>
                 </div>
               </motion.div>
@@ -57,11 +91,18 @@ export default function EducationalFeed({ trackers }) {
 
         {!trackers.length && (
           <div
-            className="flex h-40 flex-col items-center justify-center rounded-lg text-xs"
-            style={{ border: '1px dashed #3D4D55' }}
+            style={{
+              border: '1px dashed #3D4D55',
+              borderRadius: '10px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '160px',
+            }}
           >
-            <p className="font-medium" style={{ color: '#A79E9C' }}>No tracker events yet</p>
-            <p className="mt-1" style={{ color: '#3D4D55' }}>Waiting for live network activity.</p>
+            <p style={{ fontSize: '13px', fontWeight: 500, color: '#A79E9C', margin: 0 }}>No tracker events yet</p>
+            <p style={{ fontSize: '12px', color: '#3D4D55', margin: '4px 0 0' }}>Waiting for live network activity.</p>
           </div>
         )}
       </div>

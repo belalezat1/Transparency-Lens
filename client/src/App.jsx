@@ -74,7 +74,9 @@ export default function App() {
         })
         const data = await res.json()
         if (data.profile) setShadowProfile(data.profile)
-      } catch (_) {}
+      } catch (error) {
+        console.warn('[shadow-profile] refresh failed', error)
+      }
     }, 5 * 60 * 1000)
     return () => clearInterval(timer)
   }, [])
@@ -107,7 +109,6 @@ export default function App() {
                 {privacyScore}<span className="text-xs font-normal" style={{ color: '#3D4D55' }}>/100</span>
               </p>
             </div>
-            <div style={{ width: '1px', height: '28px', background: '#3D4D55' }} />
             <div className="flex items-center gap-2 rounded-md px-3 py-2" style={{ background: '#1B1B1B', border: '1px solid #3D4D55' }}>
               <span className="relative h-2 w-2 shrink-0">
                 <span className="live-dot absolute inset-0 rounded-full" style={{ background: '#B58863' }} />
@@ -115,15 +116,6 @@ export default function App() {
               </span>
               <span className="text-xs font-medium" style={{ color: '#A79E9C' }}>Live</span>
             </div>
-            <button
-              onClick={() => fetch('/demo', { method: 'POST' }).catch(() => {})}
-              className="rounded-md px-4 py-2 text-xs font-semibold transition active:scale-95"
-              style={{ background: '#B58863', color: '#1B1B1B' }}
-              onMouseEnter={e => e.target.style.background = '#c9956e'}
-              onMouseLeave={e => e.target.style.background = '#B58863'}
-            >
-              Simulate Tracker
-            </button>
           </div>
         </div>
       </header>

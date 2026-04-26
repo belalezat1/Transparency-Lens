@@ -61,7 +61,7 @@ export default function EducationalFeed({ trackers }) {
             style={{ border: '1px dashed #3D4D55' }}
           >
             <p className="font-medium" style={{ color: '#A79E9C' }}>No tracker events yet</p>
-            <p className="mt-1" style={{ color: '#3D4D55' }}>Click Simulate Tracker to begin.</p>
+            <p className="mt-1" style={{ color: '#3D4D55' }}>Waiting for live network activity.</p>
           </div>
         )}
       </div>

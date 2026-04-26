@@ -80,7 +80,7 @@ export default function App() {
   }, [])
 
   return (
-    <div className="flex min-h-screen w-full flex-col font-sans">
+    <div className="w-full font-sans" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
       {/* Header */}
       <header style={{ background: '#10252C', borderBottom: '1px solid #3D4D55' }} className="shrink-0 px-5 py-3">
@@ -129,22 +129,31 @@ export default function App() {
       </header>
 
       {/* Main grid */}
-      <main className="grid flex-1 grid-cols-[300px_minmax(0,1fr)_320px] gap-3 overflow-hidden p-3">
-        <aside className="overflow-hidden">
+      <main style={{
+        flex: '1 1 0',
+        minHeight: 0,
+        display: 'grid',
+        gridTemplateColumns: '300px minmax(0,1fr) 320px',
+        gridTemplateRows: '1fr',
+        gap: '12px',
+        padding: '12px',
+        overflow: 'hidden',
+      }}>
+        <aside style={{ minHeight: 0, overflow: 'hidden' }}>
           <EducationalFeed trackers={trackers} />
         </aside>
 
-        <section className="flex flex-col gap-3 overflow-hidden">
-          <div className="card relative overflow-hidden min-h-0" style={{ height: '340px' }}>
+        <section style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>
+          <div className="card" style={{ flex: '1 1 0', minHeight: 0, overflow: 'hidden', position: 'relative' }}>
             <MapComponent trackers={trackers} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', flexShrink: 0 }}>
             <PrivacyScorecard score={privacyScore} />
             <DataValueEstimator sessionValue={sessionValue} />
           </div>
         </section>
 
-        <aside className="flex flex-col gap-3 overflow-hidden">
+        <aside style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0, overflow: 'hidden' }}>
           <CategoryPieChart stats={stats} />
           <ShadowProfileSummary profile={shadowProfile} />
           <GlobalAnalytics />

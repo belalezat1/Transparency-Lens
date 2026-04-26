@@ -1,116 +1,136 @@
 import { useEffect, useRef } from 'react'
-import mapboxgl from 'mapbox-gl'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import * as turf from '@turf/turf'
 
-const ORIGIN = [-74.2632, 40.6976]
+const ORIGIN_GEO = [-74.2632, 40.6976]
+const ORIGIN_LL  = [40.6976, -74.2632]
 
 export default function MapComponent({ trackers }) {
   const containerRef = useRef(null)
-  const mapRef = useRef(null)
-  const markersRef = useRef([])
-  const prevLenRef = useRef(0)
+  const mapRef       = useRef(null)
+  const markersRef   = useRef([])
+  const prevLenRef   = useRef(0)
 
   useEffect(() => {
-    const token = import.meta.env.VITE_MAPBOX_TOKEN
-    if (!token) {
-      console.error('[map] VITE_MAPBOX_TOKEN not set')
-      return
-    }
-    mapboxgl.accessToken = token
-
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
-      center: ORIGIN,
+    const map = L.map(containerRef.current, {
+      center: ORIGIN_LL,
       zoom: 3,
+      minZoom: 2,
+      maxZoom: 12,
+      zoomControl: false,
       attributionControl: false,
+      maxBounds: [[-90, -180], [90, 180]],
+      maxBoundsViscosity: 0.8,
     })
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      subdomains: 'abcd',
+      maxZoom: 12,
+      noWrap: true,
+    }).addTo(map)
+
+    L.control.attribution({ position: 'bottomright', prefix: false })
+      .addAttribution('&copy; <a href="https://openstreetmap.org" style="color:#3D4D55">OSM</a> &copy; <a href="https://carto.com" style="color:#3D4D55">CARTO</a>')
+      .addTo(map)
+
+    L.circleMarker(ORIGIN_LL, {
+      radius: 7,
+      fillColor: '#B58863',
+      color: '#1B1B1B',
+      weight: 2,
+      fillOpacity: 1,
+    }).addTo(map).bindPopup('You &middot; Union, NJ')
+
     mapRef.current = map
 
-    map.on('load', () => {
-      new mapboxgl.Marker({ color: '#22d3ee' })
-        .setLngLat(ORIGIN)
-        .setPopup(new mapboxgl.Popup({ offset: 10 }).setText('You · Union, NJ'))
-        .addTo(map)
-    })
+    // Force Leaflet to recalculate container size after mount
+    setTimeout(() => map.invalidateSize(), 100)
 
-    return () => map.remove()
+    // Also recompute on window resize
+    const onResize = () => map.invalidateSize()
+    window.addEventListener('resize', onResize)
+
+    return () => {
+      window.removeEventListener('resize', onResize)
+      map.remove()
+    }
   }, [])
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !map.isStyleLoaded() || !trackers.length) return
+    if (!map || !trackers.length) return
     if (trackers.length === prevLenRef.current) return
     prevLenRef.current = trackers.length
 
-    const newest = trackers[0]
-    const dest = [newest.location.lng, newest.location.lat]
+    const t = trackers[0]
+    if (t.location.lat === 0 && t.location.lng === 0) return
 
-    if (newest.location.lat === 0 && newest.location.lng === 0) return
+    const destLL  = [t.location.lat, t.location.lng]
+    const destGeo = [t.location.lng, t.location.lat]
 
-    const el = document.createElement('div')
-    el.style.cssText =
-      'width:10px;height:10px;border-radius:50%;background:#f87171;border:2px solid #1e293b;box-shadow:0 0 8px rgba(248,113,113,0.6);cursor:pointer'
-
-    const popup = new mapboxgl.Popup({ offset: 12 }).setHTML(
-      `<div style="font-family:Inter,sans-serif;font-size:12px;line-height:1.5;background:#0f172a;color:#e2e8f0;padding:4px">
-        <strong style="color:#f1f5f9">${newest.hostname}</strong><br/>
-        <span style="color:#94a3b8">${newest.location.city} · ${newest.category}</span>
+    const marker = L.circleMarker(destLL, {
+      radius: 6,
+      fillColor: '#c0614a',
+      color: '#1B1B1B',
+      weight: 2,
+      fillOpacity: 1,
+    }).addTo(map)
+    marker.bindPopup(
+      `<div style="font:12px/1.5 Inter,sans-serif;background:#10252C;color:#D3C3B9;padding:8px 12px;border-radius:6px;margin:-4px -8px">
+        <strong style="color:#D3C3B9">${t.hostname}</strong><br/>
+        <span style="color:#A79E9C">${t.location.city} &middot; ${t.category}</span>
       </div>`
     )
-    const marker = new mapboxgl.Marker({ element: el })
-      .setLngLat(dest)
-      .setPopup(popup)
-      .addTo(map)
 
     markersRef.current.push(marker)
-    if (markersRef.current.length > 12) {
-      markersRef.current.shift().remove()
-    }
+    if (markersRef.current.length > 12) markersRef.current.shift().remove()
 
-    const arcId = `arc-${Date.now()}`
     try {
-      const arc = turf.greatCircle(turf.point(ORIGIN), turf.point(dest), { npoints: 80 })
-      map.addSource(arcId, { type: 'geojson', data: arc })
-      map.addLayer({
-        id: arcId,
-        type: 'line',
-        source: arcId,
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: {
-          'line-color': '#22d3ee',
-          'line-width': 1.5,
-          'line-opacity': 0.85,
-          'line-dasharray': [0, 6],
-        },
-      })
+      const arc    = turf.greatCircle(turf.point(ORIGIN_GEO), turf.point(destGeo), { npoints: 80 })
+      const coords = arc.geometry.coordinates.map(([lng, lat]) => [lat, lng])
 
-      let step = 0
-      function animate() {
-        step += 0.4
-        if (map.getLayer(arcId)) {
-          const drawn = Math.min(step, 6)
-          const gap = Math.max(0, 6 - step)
-          map.setPaintProperty(arcId, 'line-dasharray', [drawn, gap])
-        }
-        if (step < 6) {
-          requestAnimationFrame(animate)
-        } else {
-          setTimeout(() => {
-            if (map.getLayer(arcId)) map.removeLayer(arcId)
-            if (map.getSource(arcId)) map.removeSource(arcId)
-          }, 2500)
-        }
-      }
-      requestAnimationFrame(animate)
+      const line = L.polyline(coords, {
+        color: '#B58863',
+        weight: 1.5,
+        opacity: 0,
+        dashArray: '5 7',
+      }).addTo(map)
+
+      let op = 0
+      const fadeIn = setInterval(() => {
+        op = Math.min(op + 0.08, 0.7)
+        line.setStyle({ opacity: op })
+        if (op >= 0.7) clearInterval(fadeIn)
+      }, 30)
+
+      setTimeout(() => {
+        let out = 0.7
+        const fadeOut = setInterval(() => {
+          out = Math.max(out - 0.06, 0)
+          line.setStyle({ opacity: out })
+          if (out <= 0) { clearInterval(fadeOut); map.removeLayer(line) }
+        }, 40)
+      }, 3500)
     } catch (_) {}
   }, [trackers])
 
   return (
-    <div className="relative w-full h-full">
-      <div ref={containerRef} className="w-full h-full" />
-      <div className="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-sm rounded-lg px-3 py-1.5 text-xs text-slate-400 border border-slate-700 shadow-sm">
-        Origin: Union, NJ
+    <div className="relative h-full w-full">
+      <div ref={containerRef} className="h-full w-full" />
+      <div
+        className="absolute left-3 top-3 z-[1000] rounded-lg px-3 py-2 shadow-sm"
+        style={{ background: 'rgba(16,37,44,0.92)', border: '1px solid #3D4D55' }}
+      >
+        <p className="section-title text-xs">Live Route Map</p>
+        <p className="mt-0.5 text-[11px]" style={{ color: '#A79E9C' }}>Tracker endpoints by location</p>
+      </div>
+      <div
+        className="absolute bottom-7 left-3 z-[1000] rounded-lg px-3 py-1.5"
+        style={{ background: 'rgba(16,37,44,0.92)', border: '1px solid #3D4D55' }}
+      >
+        <p className="label">Origin</p>
+        <p className="mt-0.5 text-xs font-medium" style={{ color: '#D3C3B9' }}>Union, NJ</p>
       </div>
     </div>
   )

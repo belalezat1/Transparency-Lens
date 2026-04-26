@@ -1,10 +1,10 @@
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 const COLORS = {
-  Advertising: '#f87171',
-  Analytics: '#22d3ee',
-  Fingerprinting: '#a78bfa',
-  Social: '#fb923c',
+  Advertising:    '#c0614a',
+  Analytics:      '#4d9aab',
+  Fingerprinting: '#8b78c0',
+  Social:         '#c07840',
 }
 
 function CustomTooltip({ active, payload }) {
@@ -13,54 +13,53 @@ function CustomTooltip({ active, payload }) {
   const total = payload[0].payload.total
   const pct = total ? ((value / total) * 100).toFixed(1) : 0
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs shadow-xl">
-      <p className="font-semibold text-slate-100">{name}</p>
-      <p className="text-slate-400">
-        {value} trackers · {pct}%
-      </p>
+    <div className="rounded-lg px-3 py-2 text-xs shadow-xl" style={{ background: '#10252C', border: '1px solid #3D4D55' }}>
+      <p className="font-semibold" style={{ color: '#D3C3B9' }}>{name}</p>
+      <p style={{ color: '#A79E9C' }}>{value} trackers &middot; {pct}%</p>
     </div>
   )
 }
 
 export default function CategoryPieChart({ stats }) {
   const { categoryCounts = {}, total = 0 } = stats
-  const data = Object.entries(categoryCounts).map(([name, value]) => ({
-    name,
-    value,
-    total,
-  }))
+  const data = Object.entries(categoryCounts).map(([name, value]) => ({ name, value, total }))
 
   return (
-    <div className="bg-slate-900 rounded-xl border border-slate-800 p-3 shrink-0">
-      <p className="font-semibold text-slate-100 text-sm mb-1 tracking-tight">Tracker Categories</p>
+    <div className="card shrink-0 p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="section-title">Tracker Breakdown</p>
+        <span className="label tabular-nums">{total} total</span>
+      </div>
+
       {data.length === 0 ? (
-        <div className="flex items-center justify-center h-36 text-slate-600 text-xs">
+        <div
+          className="flex h-40 items-center justify-center rounded-lg text-xs"
+          style={{ border: '1px dashed #3D4D55', color: '#3D4D55' }}
+        >
           No data yet
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={180}>
+        <ResponsiveContainer width="100%" height={188}>
           <PieChart>
             <Pie
               data={data}
-              cx="50%"
-              cy="50%"
-              innerRadius={44}
-              outerRadius={70}
+              cx="50%" cy="50%"
+              innerRadius={46} outerRadius={72}
               paddingAngle={3}
               dataKey="value"
               animationBegin={0}
               animationDuration={500}
             >
-              {data.map((entry) => (
-                <Cell key={entry.name} fill={COLORS[entry.name] || '#475569'} />
+              {data.map(entry => (
+                <Cell key={entry.name} fill={COLORS[entry.name] || '#3D4D55'} />
               ))}
             </Pie>
             <Tooltip content={<CustomTooltip />} />
             <Legend
               iconType="circle"
               iconSize={7}
-              formatter={(value) => (
-                <span style={{ fontSize: '11px', color: '#94a3b8' }}>{value}</span>
+              formatter={value => (
+                <span style={{ fontSize: '11px', color: '#A79E9C' }}>{value}</span>
               )}
             />
           </PieChart>

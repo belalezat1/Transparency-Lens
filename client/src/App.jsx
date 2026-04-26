@@ -8,55 +8,49 @@ import DataValueEstimator from './components/DataValueEstimator'
 import ShadowProfileSummary from './components/ShadowProfileSummary'
 import GlobalAnalytics from './components/GlobalAnalytics'
 import HowItWorks from './components/HowItWorks'
+import Logo from './components/Logo'
 
-const SCORE_PENALTIES = { Advertising: 3, Fingerprinting: 5, Analytics: 1, Social: 2 }
+const SCORE_PENALTIES   = { Advertising: 3, Fingerprinting: 5, Analytics: 1, Social: 2 }
 const VALUE_MULTIPLIERS = { Advertising: 3, Fingerprinting: 5, Analytics: 1, Social: 2 }
 const BASE_VALUE = 0.001
 
 function calcScore(list) {
   return Math.max(0, list.reduce((s, t) => s - (SCORE_PENALTIES[t.category] || 1), 100))
 }
-
 function calcValue(list) {
   return list.reduce((s, t) => s + BASE_VALUE * (VALUE_MULTIPLIERS[t.category] || 1), 0)
 }
 
 export default function App() {
-  const [trackers, setTrackers] = useState([])
-  const [stats, setStats] = useState({ categoryCounts: {}, total: 0 })
+  const [trackers, setTrackers]         = useState([])
+  const [stats, setStats]               = useState({ categoryCounts: {}, total: 0 })
   const [privacyScore, setPrivacyScore] = useState(100)
   const [sessionValue, setSessionValue] = useState(0)
   const [shadowProfile, setShadowProfile] = useState(
-    'Observing session... Shadow profile will generate after 5 minutes of activity.'
+    'Observing session — shadow profile generates after 5 minutes of activity.'
   )
   const trackersRef = useRef([])
-  trackersRef.current = trackers
+
+  useEffect(() => { trackersRef.current = trackers }, [trackers])
 
   useEffect(() => {
-    fetch('/api/trackers')
-      .then((r) => r.json())
-      .then((data) => {
-        setTrackers(data)
-        setPrivacyScore(calcScore(data))
-        setSessionValue(calcValue(data))
-      })
-      .catch(() => {})
+    fetch('/api/trackers').then(r => r.json()).then(data => {
+      setTrackers(data)
+      setPrivacyScore(calcScore(data))
+      setSessionValue(calcValue(data))
+    }).catch(() => {})
 
-    fetch('/api/stats')
-      .then((r) => r.json())
-      .then(setStats)
-      .catch(() => {})
+    fetch('/api/stats').then(r => r.json()).then(setStats).catch(() => {})
 
     const socket = io('http://localhost:3001', { transports: ['websocket'] })
-
-    socket.on('new_tracker', (event) => {
-      setTrackers((prev) => {
+    socket.on('new_tracker', event => {
+      setTrackers(prev => {
         const updated = [event, ...prev].slice(0, 100)
         setPrivacyScore(calcScore(updated))
         setSessionValue(calcValue(updated))
         return updated
       })
-      setStats((prev) => ({
+      setStats(prev => ({
         ...prev,
         total: prev.total + 1,
         categoryCounts: {
@@ -65,7 +59,6 @@ export default function App() {
         },
       }))
     })
-
     return () => socket.disconnect()
   }, [])
 
@@ -86,56 +79,72 @@ export default function App() {
     return () => clearInterval(timer)
   }, [])
 
-  function simulateTracker() {
-    fetch('/demo', { method: 'POST' }).catch(() => {})
-  }
-
   return (
-    <div className="min-h-screen bg-slate-950 font-sans text-slate-100 flex flex-col">
+    <div className="flex min-h-screen w-full flex-col font-sans">
+
       {/* Header */}
-      <header className="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/20">
-            <span className="text-slate-950 text-xs font-black">TL</span>
+      <header style={{ background: '#10252C', borderBottom: '1px solid #3D4D55' }} className="shrink-0 px-5 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Logo />
+            <div>
+              <h1 className="text-sm font-semibold tracking-tight" style={{ color: '#D3C3B9' }}>
+                Transparency Lens
+              </h1>
+              <p className="text-xs" style={{ color: '#3D4D55' }}>Real-time tracker surveillance dashboard</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-sm font-semibold text-slate-100 leading-none tracking-tight">
-              Transparency Lens
-            </h1>
-            <p className="text-[11px] text-slate-500 mt-0.5">Real-Time Privacy Intelligence · KeanUHackThis 2026</p>
+
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="label">Intercepted</p>
+              <p className="text-lg font-bold tabular-nums" style={{ color: '#D3C3B9' }}>{stats.total}</p>
+            </div>
+            <div style={{ width: '1px', height: '28px', background: '#3D4D55' }} />
+            <div className="text-right">
+              <p className="label">Privacy Score</p>
+              <p className="text-lg font-bold tabular-nums" style={{ color: '#D3C3B9' }}>
+                {privacyScore}<span className="text-xs font-normal" style={{ color: '#3D4D55' }}>/100</span>
+              </p>
+            </div>
+            <div style={{ width: '1px', height: '28px', background: '#3D4D55' }} />
+            <div className="flex items-center gap-2 rounded-md px-3 py-2" style={{ background: '#1B1B1B', border: '1px solid #3D4D55' }}>
+              <span className="relative h-2 w-2 shrink-0">
+                <span className="live-dot absolute inset-0 rounded-full" style={{ background: '#B58863' }} />
+                <span className="relative block h-2 w-2 rounded-full" style={{ background: '#B58863' }} />
+              </span>
+              <span className="text-xs font-medium" style={{ color: '#A79E9C' }}>Live</span>
+            </div>
+            <button
+              onClick={() => fetch('/demo', { method: 'POST' }).catch(() => {})}
+              className="rounded-md px-4 py-2 text-xs font-semibold transition active:scale-95"
+              style={{ background: '#B58863', color: '#1B1B1B' }}
+              onMouseEnter={e => e.target.style.background = '#c9956e'}
+              onMouseLeave={e => e.target.style.background = '#B58863'}
+            >
+              Simulate Tracker
+            </button>
           </div>
-        </div>
-        <div className="flex items-center gap-5">
-          <span className="flex items-center gap-2 text-xs text-cyan-400 font-medium">
-            <span className="relative w-2 h-2">
-              <span className="live-dot absolute inset-0 rounded-full bg-cyan-400" />
-              <span className="relative w-2 h-2 rounded-full bg-cyan-400 block" />
-            </span>
-            Live
-          </span>
-          <span className="text-xs text-slate-500 tabular-nums">
-            {stats.total} trackers intercepted
-          </span>
         </div>
       </header>
 
-      {/* Main 3-column grid */}
-      <main className="flex-1 grid grid-cols-[300px_1fr_300px] gap-3 p-3 overflow-hidden">
-        <aside className="flex flex-col gap-3 overflow-hidden min-h-0">
+      {/* Main grid */}
+      <main className="grid flex-1 grid-cols-[300px_minmax(0,1fr)_320px] gap-3 overflow-hidden p-3">
+        <aside className="overflow-hidden">
           <EducationalFeed trackers={trackers} />
         </aside>
 
-        <section className="flex flex-col gap-3 overflow-hidden min-h-0">
-          <div className="flex-1 rounded-xl overflow-hidden border border-slate-800 shadow-sm min-h-0">
+        <section className="flex flex-col gap-3 overflow-hidden">
+          <div className="card relative overflow-hidden min-h-0" style={{ height: '340px' }}>
             <MapComponent trackers={trackers} />
           </div>
-          <div className="grid grid-cols-2 gap-3 shrink-0">
+          <div className="grid grid-cols-2 gap-3">
             <PrivacyScorecard score={privacyScore} />
             <DataValueEstimator sessionValue={sessionValue} />
           </div>
         </section>
 
-        <aside className="flex flex-col gap-3 overflow-hidden min-h-0">
+        <aside className="flex flex-col gap-3 overflow-hidden">
           <CategoryPieChart stats={stats} />
           <ShadowProfileSummary profile={shadowProfile} />
           <GlobalAnalytics />
@@ -143,13 +152,6 @@ export default function App() {
       </main>
 
       <HowItWorks />
-
-      <button
-        onClick={simulateTracker}
-        className="fixed bottom-6 right-6 bg-cyan-500 text-slate-950 px-5 py-2.5 rounded-full shadow-lg shadow-cyan-500/25 text-sm font-semibold hover:bg-cyan-400 active:scale-95 transition-all"
-      >
-        Simulate Tracker
-      </button>
     </div>
   )
 }

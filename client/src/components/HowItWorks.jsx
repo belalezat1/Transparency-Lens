@@ -1,40 +1,37 @@
 const STEPS = [
   {
-    title: 'Transparent Proxy',
-    subtitle: 'Raspberry Pi + mitmproxy',
-    description:
-      'A Pi running mitmproxy sits between your device and the router, silently intercepting DNS and HTTP/S traffic — no app installation required.',
+    num: '01',
+    title: 'Network Interception',
+    sub: 'Raspberry Pi + mitmproxy',
+    desc: 'A Pi running mitmproxy sits between your device and router, intercepting all DNS and HTTP/S traffic without any app installation.',
   },
   {
+    num: '02',
     title: 'AI Classification',
-    subtitle: 'Gemma 4 via Gemini API',
-    description:
-      'Each intercepted hostname is classified by Gemma 4. The model generates plain-English privacy explanations and assigns tracker categories in real time.',
+    sub: 'Gemma 4 via Gemini API',
+    desc: 'Each hostname is classified by Gemma 4, which generates a plain-English privacy impact summary and assigns a tracker category.',
   },
   {
-    title: 'Live Intelligence',
-    subtitle: 'Socket.io + MongoDB + Snowflake',
-    description:
-      'Tracker events stream to this dashboard via Socket.io, are stored in MongoDB Atlas for session history, and written to Snowflake for cross-session analytics.',
+    num: '03',
+    title: 'Live Dashboard',
+    sub: 'Socket.io + MongoDB + Snowflake',
+    desc: 'Events stream to this dashboard in real time, stored in MongoDB for session history and Snowflake for cross-session intelligence.',
   },
 ]
 
 export default function HowItWorks() {
   return (
-    <section className="border-t border-slate-800 bg-slate-900 px-6 py-6 shrink-0">
-      <p className="text-center text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-5">
-        How It Works
-      </p>
-      <div className="max-w-4xl mx-auto grid grid-cols-3 gap-8">
-        {STEPS.map((step, i) => (
-          <div key={i} className="flex gap-3">
-            <div className="w-6 h-6 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-400 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
-              {i + 1}
-            </div>
+    <section className="shrink-0 px-6 py-5" style={{ background: '#10252C', borderTop: '1px solid #3D4D55' }}>
+      <div className="mx-auto grid max-w-5xl grid-cols-3 gap-8">
+        {STEPS.map(step => (
+          <div key={step.num} className="flex gap-4">
+            <span className="mt-0.5 shrink-0 text-sm font-bold tabular-nums" style={{ color: '#3D4D55' }}>
+              {step.num}
+            </span>
             <div>
-              <p className="font-semibold text-slate-200 text-xs leading-tight">{step.title}</p>
-              <p className="text-[10px] text-cyan-600 font-medium mb-1">{step.subtitle}</p>
-              <p className="text-[11px] text-slate-500 leading-relaxed">{step.description}</p>
+              <p className="text-xs font-semibold" style={{ color: '#D3C3B9' }}>{step.title}</p>
+              <p className="mb-1 text-[10px] font-medium" style={{ color: '#B58863' }}>{step.sub}</p>
+              <p className="text-[11px] leading-relaxed" style={{ color: '#A79E9C' }}>{step.desc}</p>
             </div>
           </div>
         ))}

@@ -1,54 +1,67 @@
 import { AnimatePresence, motion } from 'framer-motion'
 
 const BADGE = {
-  Advertising: 'bg-red-950 text-red-400 border-red-800',
-  Analytics: 'bg-cyan-950 text-cyan-400 border-cyan-800',
-  Fingerprinting: 'bg-violet-950 text-violet-400 border-violet-800',
-  Social: 'bg-orange-950 text-orange-400 border-orange-800',
+  Advertising:    { bg: '#2a1212', text: '#c0614a', border: '#4a2020' },
+  Analytics:      { bg: '#0e2228', text: '#4d9aab', border: '#1e3d46' },
+  Fingerprinting: { bg: '#1a1228', text: '#8b78c0', border: '#2e2048' },
+  Social:         { bg: '#261a0e', text: '#c07840', border: '#442e18' },
 }
 
 export default function EducationalFeed({ trackers }) {
-  const displayed = trackers.slice(0, 50)
-
   return (
-    <div className="bg-slate-900 rounded-xl border border-slate-800 flex flex-col overflow-hidden h-full">
-      <div className="px-4 py-2.5 border-b border-slate-800 shrink-0 flex items-center justify-between">
-        <p className="font-semibold text-slate-100 text-sm tracking-tight">Live Feed</p>
-        <span className="text-[11px] text-slate-500 tabular-nums">{trackers.length} intercepted</span>
+    <div className="card flex h-full flex-col overflow-hidden">
+      <div className="card-header flex items-center justify-between">
+        <p className="section-title">Tracker Feed</p>
+        <span className="label tabular-nums">{trackers.length} this session</span>
       </div>
-      <div className="overflow-y-auto flex-1 p-2 space-y-1">
+
+      <div className="flex-1 space-y-1.5 overflow-y-auto p-2">
         <AnimatePresence initial={false}>
-          {displayed.map((t) => (
-            <motion.div
-              key={String(t._id)}
-              initial={{ opacity: 0, y: -8, height: 0 }}
-              animate={{ opacity: 1, y: 0, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="overflow-hidden"
-            >
-              <div className="px-2.5 py-2 rounded-lg bg-slate-800/50 border border-slate-700/40 hover:border-slate-600/60 transition-colors">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="font-mono font-medium text-slate-200 text-[11px] truncate leading-none">
-                    {t.hostname}
-                  </span>
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold whitespace-nowrap shrink-0 tracking-wide uppercase ${BADGE[t.category] || 'bg-slate-800 text-slate-400 border-slate-700'}`}>
-                    {t.category}
-                  </span>
+          {trackers.slice(0, 50).map(t => {
+            const badge = BADGE[t.category] || { bg: '#1e1e1e', text: '#A79E9C', border: '#3D4D55' }
+            return (
+              <motion.div
+                key={String(t._id)}
+                initial={{ opacity: 0, y: -6, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="overflow-hidden"
+              >
+                <div
+                  className="rounded-lg px-3 py-2 transition-colors"
+                  style={{ background: '#1B1B1B', border: '1px solid #3D4D55' }}
+                >
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="truncate font-mono text-[11px] font-medium" style={{ color: '#D3C3B9' }}>
+                      {t.hostname}
+                    </span>
+                    <span
+                      className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
+                      style={{ background: badge.bg, color: badge.text, border: `1px solid ${badge.border}` }}
+                    >
+                      {t.category}
+                    </span>
+                  </div>
+                  <p className="line-clamp-2 text-[11px] leading-relaxed" style={{ color: '#A79E9C' }}>
+                    {t.educational_summary}
+                  </p>
+                  <p className="mt-1.5 text-[10px] tabular-nums" style={{ color: '#3D4D55' }}>
+                    {new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {t.location?.city || 'Unknown'}
+                  </p>
                 </div>
-                <p className="text-[10px] text-slate-500 leading-snug line-clamp-2">
-                  {t.educational_summary}
-                </p>
-                <p className="text-[9px] text-slate-700 mt-1 tabular-nums">
-                  {new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {t.location?.city || 'Unknown'}
-                </p>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            )
+          })}
         </AnimatePresence>
+
         {!trackers.length && (
-          <div className="flex items-center justify-center h-32 text-slate-700 text-xs">
-            Waiting for tracker events...
+          <div
+            className="flex h-40 flex-col items-center justify-center rounded-lg text-xs"
+            style={{ border: '1px dashed #3D4D55' }}
+          >
+            <p className="font-medium" style={{ color: '#A79E9C' }}>No tracker events yet</p>
+            <p className="mt-1" style={{ color: '#3D4D55' }}>Click Simulate Tracker to begin.</p>
           </div>
         )}
       </div>

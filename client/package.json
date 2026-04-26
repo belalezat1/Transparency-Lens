@@ -12,6 +12,7 @@
   "dependencies": {
     "@turf/turf": "^7.3.5",
     "framer-motion": "^12.38.0",
+    "leaflet": "^1.9.4",
     "mapbox-gl": "^3.22.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

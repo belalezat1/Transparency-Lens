@@ -25,7 +25,7 @@ export default function CategoryPieChart({ stats }) {
   const data = Object.entries(categoryCounts).map(([name, value]) => ({ name, value, total }))
 
   return (
-    <div className="card shrink-0 p-4">
+    <div className="card p-4">
       <div className="mb-2 flex items-center justify-between">
         <p className="section-title">Tracker Breakdown</p>
         <span className="label tabular-nums">{total} total</span>
@@ -33,18 +33,18 @@ export default function CategoryPieChart({ stats }) {
 
       {data.length === 0 ? (
         <div
-          className="flex h-40 items-center justify-center rounded-lg text-xs"
+          className="flex h-32 items-center justify-center rounded-lg text-xs"
           style={{ border: '1px dashed #3D4D55', color: '#3D4D55' }}
         >
           No data yet
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={188}>
+        <ResponsiveContainer width="100%" height={160}>
           <PieChart>
             <Pie
               data={data}
               cx="50%" cy="50%"
-              innerRadius={46} outerRadius={72}
+              innerRadius={40} outerRadius={62}
               paddingAngle={3}
               dataKey="value"
               animationBegin={0}
@@ -56,6 +56,9 @@ export default function CategoryPieChart({ stats }) {
             </Pie>
             <Tooltip content={<CustomTooltip />} />
             <Legend
+              layout="vertical"
+              align="right"
+              verticalAlign="middle"
               iconType="circle"
               iconSize={7}
               formatter={value => (

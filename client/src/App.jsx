@@ -27,20 +27,14 @@ export default function App() {
   const [privacyScore, setPrivacyScore] = useState(100)
   const [sessionValue, setSessionValue] = useState(0)
   const [shadowProfile, setShadowProfile] = useState(
-    'Observing session — shadow profile generates after 5 minutes of activity.'
+    'Monitoring active session. Inferred profile will generate after sufficient tracker data has been collected.'
   )
   const trackersRef = useRef([])
 
   useEffect(() => { trackersRef.current = trackers }, [trackers])
 
   useEffect(() => {
-    fetch('/api/trackers').then(r => r.json()).then(data => {
-      setTrackers(data)
-      setPrivacyScore(calcScore(data))
-      setSessionValue(calcValue(data))
-    }).catch(() => {})
-
-    fetch('/api/stats').then(r => r.json()).then(setStats).catch(() => {})
+    // Session-only: start fresh — only show trackers captured since page load
 
     const socket = io('http://localhost:3001', { transports: ['websocket'] })
     socket.on('new_tracker', event => {
@@ -115,15 +109,6 @@ export default function App() {
               </span>
               <span className="text-xs font-medium" style={{ color: '#A79E9C' }}>Live</span>
             </div>
-            <button
-              onClick={() => fetch('/demo', { method: 'POST' }).catch(() => {})}
-              className="rounded-md px-4 py-2 text-xs font-semibold transition active:scale-95"
-              style={{ background: '#B58863', color: '#1B1B1B' }}
-              onMouseEnter={e => e.target.style.background = '#c9956e'}
-              onMouseLeave={e => e.target.style.background = '#B58863'}
-            >
-              Simulate Tracker
-            </button>
           </div>
         </div>
       </header>
@@ -144,7 +129,7 @@ export default function App() {
           </div>
         </section>
 
-        <aside className="flex flex-col gap-3 overflow-hidden">
+        <aside className="flex flex-col gap-3 overflow-y-auto min-h-0">
           <CategoryPieChart stats={stats} />
           <ShadowProfileSummary profile={shadowProfile} />
           <GlobalAnalytics />

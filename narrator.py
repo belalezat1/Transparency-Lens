@@ -1,22 +1,23 @@
 """
-narrator.py — Raspberry Pi transparent proxy addon for The Transparency Lens
-Run: mitmproxy --mode transparent -s narrator.py
+narrator.py — mitmproxy addon (regular proxy mode)
+Run: mitmdump --mode regular --listen-port 8080 -s narrator.py
 
-Dependencies (pip):
-  mitmproxy, requests, ollama
+Demo device proxy config:
+  HTTP Proxy:  10.139.24.64  port 8080
+  HTTPS Proxy: 10.139.24.64  port 8080
 
-Ollama model:
-  Pull the Gemma 4 model: ollama pull gemma3:4b
-  (Update GEMMA_MODEL below when Gemma 4 releases under a new tag)
+No certificate installation needed — hostnames are captured from the
+CONNECT request before the TLS handshake starts.
 """
 
 import re
 import threading
 import requests
+from concurrent.futures import ThreadPoolExecutor
 from mitmproxy import http
 
-BACKEND_URL = "http://YOUR_DASHBOARD_IP:3001/ingest"
-GEMMA_MODEL = "gemma3:4b"  # update to gemma4:... when available
+BACKEND_URL = "http://localhost:3001"
+_pool = ThreadPoolExecutor(max_workers=4)
 
 CATEGORY_PATTERNS = {
     "Advertising": re.compile(
@@ -46,7 +47,7 @@ CATEGORY_PATTERNS = {
     ),
 }
 
-SEEN = set()
+SEEN      = set()
 SEEN_LOCK = threading.Lock()
 
 
@@ -57,26 +58,10 @@ def detect_category(hostname: str) -> str | None:
     return None
 
 
-def get_educational_summary(hostname: str) -> str:
+def get_geoip(host: str) -> dict:
+    # ip-api.com accepts both IPs and hostnames
     try:
-        import ollama
-        prompt = (
-            f"Act as a privacy educator. In one professional sentence, explain what a data tracker "
-            f"at {hostname} is and how its data collection contributes to a user's digital profile. "
-            f"Be objective and factual."
-        )
-        response = ollama.chat(
-            model=GEMMA_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return response["message"]["content"].strip()
-    except Exception as e:
-        return f"{hostname} collects user behavioral metadata to support advertising and analytics pipelines."
-
-
-def get_geoip(ip: str) -> dict:
-    try:
-        data = requests.get(f"http://ip-api.com/json/{ip}", timeout=3).json()
+        data = requests.get(f"http://ip-api.com/json/{host}", timeout=3).json()
         return {
             "lat": data.get("lat", 0),
             "lng": data.get("lon", 0),
@@ -86,7 +71,19 @@ def get_geoip(ip: str) -> dict:
         return {"lat": 0, "lng": 0, "city": "Unknown"}
 
 
-def process_tracker(hostname: str, server_ip: str):
+def get_summary(hostname: str) -> str:
+    try:
+        r = requests.get(
+            f"{BACKEND_URL}/api/educational-summary",
+            params={"hostname": hostname},
+            timeout=10,
+        )
+        return r.json().get("summary", "")
+    except Exception:
+        return f"{hostname} collects user behavioral metadata for advertising and analytics pipelines."
+
+
+def process_tracker(hostname: str, server_ip: str | None):
     category = detect_category(hostname)
     if not category:
         return
@@ -96,38 +93,57 @@ def process_tracker(hostname: str, server_ip: str):
             return
         SEEN.add(hostname)
 
-    location = get_geoip(server_ip)
-    summary = get_educational_summary(hostname)
+    # Use hostname for GeoIP if no IP available
+    geo_target = server_ip if server_ip else hostname
+    location = get_geoip(geo_target)
+    # Don't skip on GeoIP failure — still show in feed and pie chart, map just skips the arc
+
+    summary = get_summary(hostname)
 
     payload = {
         "hostname": hostname,
-        "ip": server_ip,
+        "ip": server_ip or "0.0.0.0",
         "location": location,
         "educational_summary": summary,
         "category": category,
     }
 
     try:
-        requests.post(BACKEND_URL, json=payload, timeout=5)
-        print(f"[narrator] Sent: {hostname} ({category}) · {location['city']}")
+        requests.post(f"{BACKEND_URL}/ingest", json=payload, timeout=5)
+        print(f"[narrator] ✓  {hostname:40s} {category:15s} {location['city']}")
     except Exception as e:
-        print(f"[narrator] POST failed for {hostname}: {e}")
+        print(f"[narrator] ✗  {hostname}: {e}")
 
 
 class TrackerInterceptor:
+
+    def http_connect(self, flow: http.HTTPFlow) -> None:
+        """
+        HTTPS path — fires when client sends CONNECT, before TLS handshake.
+        We capture the hostname here so no certificate installation is needed.
+        """
+        hostname = flow.request.host
+        print(f"[http_connect] {hostname}")
+        server_ip = (
+            flow.server_conn.peername[0]
+            if flow.server_conn and flow.server_conn.peername
+            else None
+        )
+        _pool.submit(process_tracker, hostname, server_ip)
+
     def request(self, flow: http.HTTPFlow) -> None:
+        """HTTP plain-text path only — HTTPS is handled by http_connect above."""
+        if flow.request.method == "CONNECT":
+            return  # already handled in http_connect
         hostname = flow.request.pretty_host
         if not hostname:
             return
         server_ip = (
             flow.server_conn.peername[0]
             if flow.server_conn and flow.server_conn.peername
-            else "0.0.0.0"
+            else None
         )
-        # Run in background thread so mitmproxy isn't blocked by ollama inference
-        threading.Thread(
-            target=process_tracker, args=(hostname, server_ip), daemon=True
-        ).start()
+        _pool.submit(process_tracker, hostname, server_ip)
 
 
 addons = [TrackerInterceptor()]

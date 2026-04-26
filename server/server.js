@@ -28,7 +28,9 @@ const GEMMA_MODEL = process.env.GEMMA_MODEL || 'gemma-3-4b-it'
 async function gemmaGenerate(prompt) {
   const model = genAI.getGenerativeModel({ model: GEMMA_MODEL })
   const result = await model.generateContent(prompt)
-  return result.response.text().trim()
+  const text = result.response.text().trim()
+  // Always return only the first sentence
+  return text.split(/(?<=[.!?])\s+/)[0].trim()
 }
 
 // ─── Snowflake ────────────────────────────────────────────────────────────────
@@ -168,9 +170,7 @@ app.get('/api/educational-summary', async (req, res) => {
   if (!hostname) return res.status(400).json({ error: 'hostname required' })
   try {
     const prompt =
-      `Act as a privacy educator. In one professional sentence, explain what a data tracker ` +
-      `at ${hostname} is and how its data collection contributes to a user's digital profile. ` +
-      `Be objective and factual.`
+      `In one sentence under 20 words, state what ${hostname} tracks and its privacy impact. Be direct, no preamble.`
     const summary = await gemmaGenerate(prompt)
     res.json({ summary })
   } catch (err) {
@@ -240,9 +240,7 @@ app.post('/demo', async (_req, res) => {
   let educational_summary = `${base.hostname} collects user behavioral and technical metadata to support targeted advertising and analytics pipelines.`
   try {
     const prompt =
-      `Act as a privacy educator. In one professional sentence, explain what a data tracker ` +
-      `at ${base.hostname} is and how its data collection contributes to a user's digital profile. ` +
-      `Be objective and factual.`
+      `In one sentence under 20 words, state what ${base.hostname} tracks and its privacy impact. Be direct, no preamble.`
     educational_summary = await gemmaGenerate(prompt)
   } catch (_) { /* use fallback */ }
   try {

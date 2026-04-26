@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react'
 import mapboxgl from 'mapbox-gl'
 import * as turf from '@turf/turf'
 
-// Union NJ — the "user" origin point
 const ORIGIN = [-74.2632, 40.6976]
 
 export default function MapComponent({ trackers }) {
@@ -11,7 +10,6 @@ export default function MapComponent({ trackers }) {
   const markersRef = useRef([])
   const prevLenRef = useRef(0)
 
-  // Initialize map once
   useEffect(() => {
     const token = import.meta.env.VITE_MAPBOX_TOKEN
     if (!token) {
@@ -22,7 +20,7 @@ export default function MapComponent({ trackers }) {
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: 'mapbox://styles/mapbox/light-v11',
+      style: 'mapbox://styles/mapbox/dark-v11',
       center: ORIGIN,
       zoom: 3,
       attributionControl: false,
@@ -30,8 +28,7 @@ export default function MapComponent({ trackers }) {
     mapRef.current = map
 
     map.on('load', () => {
-      // Origin marker (Union NJ)
-      new mapboxgl.Marker({ color: '#2563eb' })
+      new mapboxgl.Marker({ color: '#22d3ee' })
         .setLngLat(ORIGIN)
         .setPopup(new mapboxgl.Popup({ offset: 10 }).setText('You · Union, NJ'))
         .addTo(map)
@@ -40,7 +37,6 @@ export default function MapComponent({ trackers }) {
     return () => map.remove()
   }, [])
 
-  // Draw arc + marker on newest tracker
   useEffect(() => {
     const map = mapRef.current
     if (!map || !map.isStyleLoaded() || !trackers.length) return
@@ -50,18 +46,16 @@ export default function MapComponent({ trackers }) {
     const newest = trackers[0]
     const dest = [newest.location.lng, newest.location.lat]
 
-    // Skip if location is at 0,0
     if (newest.location.lat === 0 && newest.location.lng === 0) return
 
-    // Marker
     const el = document.createElement('div')
     el.style.cssText =
-      'width:10px;height:10px;border-radius:50%;background:#ef4444;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.25);cursor:pointer'
+      'width:10px;height:10px;border-radius:50%;background:#f87171;border:2px solid #1e293b;box-shadow:0 0 8px rgba(248,113,113,0.6);cursor:pointer'
 
     const popup = new mapboxgl.Popup({ offset: 12 }).setHTML(
-      `<div style="font-family:Inter,sans-serif;font-size:12px;line-height:1.5">
-        <strong>${newest.hostname}</strong><br/>
-        ${newest.location.city} · ${newest.category}
+      `<div style="font-family:Inter,sans-serif;font-size:12px;line-height:1.5;background:#0f172a;color:#e2e8f0;padding:4px">
+        <strong style="color:#f1f5f9">${newest.hostname}</strong><br/>
+        <span style="color:#94a3b8">${newest.location.city} · ${newest.category}</span>
       </div>`
     )
     const marker = new mapboxgl.Marker({ element: el })
@@ -74,7 +68,6 @@ export default function MapComponent({ trackers }) {
       markersRef.current.shift().remove()
     }
 
-    // Arc via turf great circle
     const arcId = `arc-${Date.now()}`
     try {
       const arc = turf.greatCircle(turf.point(ORIGIN), turf.point(dest), { npoints: 80 })
@@ -85,9 +78,9 @@ export default function MapComponent({ trackers }) {
         source: arcId,
         layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: {
-          'line-color': '#2563eb',
-          'line-width': 2,
-          'line-opacity': 0.8,
+          'line-color': '#22d3ee',
+          'line-width': 1.5,
+          'line-opacity': 0.85,
           'line-dasharray': [0, 6],
         },
       })
@@ -110,15 +103,13 @@ export default function MapComponent({ trackers }) {
         }
       }
       requestAnimationFrame(animate)
-    } catch (_) {
-      // turf throws if origin === dest (same location)
-    }
+    } catch (_) {}
   }, [trackers])
 
   return (
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full" />
-      <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1.5 text-xs text-slate-600 border border-slate-200 shadow-sm">
+      <div className="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-sm rounded-lg px-3 py-1.5 text-xs text-slate-400 border border-slate-700 shadow-sm">
         Origin: Union, NJ
       </div>
     </div>

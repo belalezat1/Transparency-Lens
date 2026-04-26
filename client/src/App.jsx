@@ -32,7 +32,6 @@ export default function App() {
   const trackersRef = useRef([])
   trackersRef.current = trackers
 
-  // Initial load + socket
   useEffect(() => {
     fetch('/api/trackers')
       .then((r) => r.json())
@@ -70,7 +69,6 @@ export default function App() {
     return () => socket.disconnect()
   }, [])
 
-  // 5-minute shadow profile via Gemma 4
   useEffect(() => {
     const timer = setInterval(async () => {
       const current = trackersRef.current
@@ -93,37 +91,42 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 flex flex-col">
+    <div className="min-h-screen bg-slate-950 font-sans text-slate-100 flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0">
+      <header className="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white text-xs font-bold">TL</span>
+          <div className="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/20">
+            <span className="text-slate-950 text-xs font-black">TL</span>
           </div>
           <div>
-            <h1 className="text-base font-semibold text-slate-900 leading-none">The Transparency Lens</h1>
-            <p className="text-xs text-slate-400 mt-0.5">Real-Time Privacy Auditor · KeanUHackThis 2026</p>
+            <h1 className="text-sm font-semibold text-slate-100 leading-none tracking-tight">
+              Transparency Lens
+            </h1>
+            <p className="text-[11px] text-slate-500 mt-0.5">Real-Time Privacy Intelligence · KeanUHackThis 2026</p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+        <div className="flex items-center gap-5">
+          <span className="flex items-center gap-2 text-xs text-cyan-400 font-medium">
+            <span className="relative w-2 h-2">
+              <span className="live-dot absolute inset-0 rounded-full bg-cyan-400" />
+              <span className="relative w-2 h-2 rounded-full bg-cyan-400 block" />
+            </span>
             Live
           </span>
-          <span className="text-xs text-slate-400">{stats.total} trackers intercepted</span>
+          <span className="text-xs text-slate-500 tabular-nums">
+            {stats.total} trackers intercepted
+          </span>
         </div>
       </header>
 
       {/* Main 3-column grid */}
       <main className="flex-1 grid grid-cols-[300px_1fr_300px] gap-3 p-3 overflow-hidden">
-        {/* Left: Educational Feed */}
         <aside className="flex flex-col gap-3 overflow-hidden min-h-0">
           <EducationalFeed trackers={trackers} />
         </aside>
 
-        {/* Center: Map + scores */}
         <section className="flex flex-col gap-3 overflow-hidden min-h-0">
-          <div className="flex-1 rounded-xl overflow-hidden border border-slate-200 shadow-sm min-h-0">
+          <div className="flex-1 rounded-xl overflow-hidden border border-slate-800 shadow-sm min-h-0">
             <MapComponent trackers={trackers} />
           </div>
           <div className="grid grid-cols-2 gap-3 shrink-0">
@@ -132,7 +135,6 @@ export default function App() {
           </div>
         </section>
 
-        {/* Right: Charts + AI panels */}
         <aside className="flex flex-col gap-3 overflow-hidden min-h-0">
           <CategoryPieChart stats={stats} />
           <ShadowProfileSummary profile={shadowProfile} />
@@ -140,13 +142,11 @@ export default function App() {
         </aside>
       </main>
 
-      {/* Bottom: How It Works */}
       <HowItWorks />
 
-      {/* Demo button */}
       <button
         onClick={simulateTracker}
-        className="fixed bottom-6 right-6 bg-blue-600 text-white px-5 py-2.5 rounded-full shadow-lg text-sm font-medium hover:bg-blue-700 active:scale-95 transition-all"
+        className="fixed bottom-6 right-6 bg-cyan-500 text-slate-950 px-5 py-2.5 rounded-full shadow-lg shadow-cyan-500/25 text-sm font-semibold hover:bg-cyan-400 active:scale-95 transition-all"
       >
         Simulate Tracker
       </button>

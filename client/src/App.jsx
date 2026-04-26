@@ -68,13 +68,15 @@ export default function App() {
         })
         const data = await res.json()
         if (data.profile) setShadowProfile(data.profile)
-      } catch (_) {}
+      } catch (error) {
+        console.warn('[shadow-profile] refresh failed', error)
+      }
     }, 5 * 60 * 1000)
     return () => clearInterval(timer)
   }, [])
 
   return (
-    <div className="flex min-h-screen w-full flex-col font-sans">
+    <div className="w-full font-sans" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
       {/* Header */}
       <header style={{ background: '#10252C', borderBottom: '1px solid #3D4D55' }} className="shrink-0 px-5 py-3">
@@ -101,7 +103,6 @@ export default function App() {
                 {privacyScore}<span className="text-xs font-normal" style={{ color: '#3D4D55' }}>/100</span>
               </p>
             </div>
-            <div style={{ width: '1px', height: '28px', background: '#3D4D55' }} />
             <div className="flex items-center gap-2 rounded-md px-3 py-2" style={{ background: '#1B1B1B', border: '1px solid #3D4D55' }}>
               <span className="relative h-2 w-2 shrink-0">
                 <span className="live-dot absolute inset-0 rounded-full" style={{ background: '#B58863' }} />
@@ -114,22 +115,31 @@ export default function App() {
       </header>
 
       {/* Main grid */}
-      <main className="grid flex-1 grid-cols-[300px_minmax(0,1fr)_320px] gap-3 overflow-hidden p-3">
-        <aside className="overflow-hidden">
+      <main style={{
+        flex: '1 1 0',
+        minHeight: 0,
+        display: 'grid',
+        gridTemplateColumns: '300px minmax(0,1fr) 320px',
+        gridTemplateRows: '1fr',
+        gap: '12px',
+        padding: '12px',
+        overflow: 'hidden',
+      }}>
+        <aside style={{ minHeight: 0, overflow: 'hidden' }}>
           <EducationalFeed trackers={trackers} />
         </aside>
 
-        <section className="flex flex-col gap-3 overflow-hidden">
-          <div className="card relative overflow-hidden min-h-0" style={{ height: '340px' }}>
+        <section style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>
+          <div className="card" style={{ flex: '1 1 0', minHeight: 0, overflow: 'hidden', position: 'relative' }}>
             <MapComponent trackers={trackers} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', flexShrink: 0 }}>
             <PrivacyScorecard score={privacyScore} />
             <DataValueEstimator sessionValue={sessionValue} />
           </div>
         </section>
 
-        <aside className="flex flex-col gap-3 overflow-y-auto min-h-0">
+        <aside style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0, overflowY: 'auto' }}>
           <CategoryPieChart stats={stats} />
           <ShadowProfileSummary profile={shadowProfile} />
           <GlobalAnalytics />

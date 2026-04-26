@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 
 const COLORS = {
   Advertising:    '#c0614a',
@@ -39,34 +39,35 @@ export default function CategoryPieChart({ stats }) {
           No data yet
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={160}>
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%" cy="50%"
-              innerRadius={40} outerRadius={62}
-              paddingAngle={3}
-              dataKey="value"
-              animationBegin={0}
-              animationDuration={500}
-            >
-              {data.map(entry => (
-                <Cell key={entry.name} fill={COLORS[entry.name] || '#3D4D55'} />
-              ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-            <Legend
-              layout="vertical"
-              align="right"
-              verticalAlign="middle"
-              iconType="circle"
-              iconSize={7}
-              formatter={value => (
-                <span style={{ fontSize: '11px', color: '#A79E9C' }}>{value}</span>
-              )}
-            />
-          </PieChart>
-        </ResponsiveContainer>
+        <>
+          <ResponsiveContainer width="100%" height={160}>
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%" cy="50%"
+                innerRadius={48} outerRadius={74}
+                paddingAngle={3}
+                dataKey="value"
+                animationBegin={0}
+                animationDuration={500}
+              >
+                {data.map(entry => (
+                  <Cell key={entry.name} fill={COLORS[entry.name] || '#3D4D55'} />
+                ))}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', justifyContent: 'center', marginTop: '8px' }}>
+            {data.map(entry => (
+              <div key={entry.name} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: COLORS[entry.name] || '#3D4D55', flexShrink: 0 }} />
+                <span style={{ fontSize: '11px', color: '#A79E9C' }}>{entry.name}</span>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )

@@ -6,6 +6,8 @@ import cors from 'cors'
 import mongoose from 'mongoose'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createRequire } from 'module'
+import { setupWebSocketServer, setIO } from './ws/manager.js'
+import ingestRouter from './routes/ingest.js'
 
 const require = createRequire(import.meta.url)
 const snowflake = require('snowflake-sdk')
@@ -17,8 +19,14 @@ const io = new Server(httpServer, {
   cors: { origin: 'http://localhost:5173', methods: ['GET', 'POST'] }
 })
 
+// ─── WebSocket setup for React Native clients ────────────────────────────────
+// React Native app connects to: ws://<SERVER_IP>:3001
+setupWebSocketServer(io)
+setIO(io)
+
 app.use(cors({ origin: 'http://localhost:5173' }))
 app.use(express.json())
+app.use(ingestRouter)
 
 // ─── Gemma 4 via Gemini API ───────────────────────────────────────────────────
 // Model: set GEMMA_MODEL env var to the current Gemma 4 ID (e.g. gemma-3-4b-it or gemma-4-4b-it)
